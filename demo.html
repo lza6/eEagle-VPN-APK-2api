@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>eEagle VPN → 2API Demo</title>
+<style>
+  :root { --bg:#0d1117; --card:#161b22; --edge:#30363d; --tx:#e6edf3; --sub:#8b949e; --acc:#58a6ff; --ok:#3fb950; }
+  * { box-sizing:border-box; margin:0; }
+  body { background:var(--bg); color:var(--tx); font:14px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; padding:32px 16px; }
+  .wrap { max-width:1080px; margin:0 auto; }
+  h1 { font-size:22px; margin-bottom:4px; }
+  h1 span { color:var(--acc); }
+  .sub { color:var(--sub); margin-bottom:24px; }
+  .stats { display:flex; gap:12px; margin-bottom:24px; flex-wrap:wrap; }
+  .stat { background:var(--card); border:1px solid var(--edge); border-radius:10px; padding:14px 20px; min-width:140px; }
+  .stat b { display:block; font-size:24px; }
+  .stat span { color:var(--sub); font-size:12px; }
+  table { width:100%; border-collapse:collapse; background:var(--card); border:1px solid var(--edge); border-radius:10px; overflow:hidden; }
+  th,td { padding:10px 12px; text-align:left; border-bottom:1px solid var(--edge); }
+  th { color:var(--sub); font-weight:600; font-size:12px; text-transform:uppercase; }
+  tr:last-child td { border-bottom:0; }
+  .tier { padding:2px 8px; border-radius:99px; font-size:12px; }
+  .tier.free { background:#1a3a2a; color:var(--ok); }
+  .tier.premium { background:#3a2a1a; color:#f0b34e; }
+  .btn { background:var(--acc); border:0; color:#0d1117; padding:6px 14px; border-radius:6px; cursor:pointer; font-weight:600; }
+  .btn:hover { filter:brightness(1.15); }
+  pre { background:#010409; border:1px solid var(--edge); border-radius:10px; padding:16px; margin-top:16px; white-space:pre-wrap; word-break:break-all; font:12px/1.5 ui-monospace,Consolas,monospace; display:none; }
+  .empty { color:var(--sub); text-align:center; padding:32px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>🦅 eEagle VPN <span>→ 2API</span> Demo</h1>
+  <p class="sub">APK v2.12.9 协议还原 · 实时节点表 · 按需配置新签（不缓存凭证）</p>
+  <div class="stats">
+    <div class="stat"><b id="s-total">–</b><span>节点总数</span></div>
+    <div class="stat"><b id="s-free">–</b><span>free</span></div>
+    <div class="stat"><b id="s-premium">–</b><span>premium</span></div>
+    <div class="stat"><b id="s-countries">–</b><span>国家</span></div>
+  </div>
+  <table>
+    <thead><tr><th>层级</th><th>国家</th><th>城市</th><th>IP</th><th>协议</th><th></th></tr></thead>
+    <tbody id="rows"><tr><td colspan="6" class="empty">加载中…</td></tr></tbody>
+  </table>
+  <pre id="conf"></pre>
+</div>
+<script>
+async function load() {
+  const r = await fetch('/api/servers');
+  const d = await r.json();
+  if (!d.success) { document.getElementById('rows').innerHTML = '<tr><td colspan="6" class="empty">上游不可用：'+d.error+'</td></tr>'; return; }
+  const free = d.servers.filter(s=>s.tier==='free').length;
+  const premium = d.servers.filter(s=>s.tier==='premium').length;
+  const countries = new Set(d.servers.map(s=>s.country)).size;
+  document.getElementById('s-total').textContent = d.count;
+  document.getElementById('s-free').textContent = free;
+  document.getElementById('s-premium').textContent = premium;
+  document.getElementById('s-countries').textContent = countries;
+  document.getElementById('rows').innerHTML = d.servers.map(s =>
+    `<tr><td><span class="tier ${s.tier}">${s.tier}</span></td><td>${s.country}</td><td>${s.city}</td>` +
+    `<td><code>${s.ip||'—'}</code></td><td>${(s.protocols||[]).join(', ')}</td>` +
+    `<td><button class="btn" onclick="getConf('${s.id}','${s.tier}')">拉配置</button></td></tr>`).join('');
+  window._srv = d.servers;
+}
+async function getConf(id, tier) {
+  const proto = 'wireguard';
+  const r = await fetch(`/api/config?id=${id}&type=${proto}`);
+  const text = await r.text();
+  const pre = document.getElementById('conf');
+  pre.style.display = 'block';
+  pre.textContent = '# ' + proto + ' (HTTP ' + r.status + ')\n' + (r.ok ? text : text);
+}
+load();
+</script>
+</body>
+</html>

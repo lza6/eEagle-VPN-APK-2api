@@ -1,0 +1,6 @@
+configs/
+*.conf
+*.ovpn
+harvest/
+eagle_got.json
+__pycache__/
